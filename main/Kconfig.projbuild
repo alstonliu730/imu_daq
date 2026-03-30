@@ -1,0 +1,49 @@
+menu "UART Configuration"
+    config ENV_GPIO_RANGE_MIN
+        int "GPIO minimum pin"
+        default 0
+
+    config ENV_GPIO_RANGE_MAX
+        int "GPIO maximum pin"
+        default 39
+
+    config ENV_GPIO_IN_RANGE_MAX
+        int
+        default ENV_GPIO_RANGE_MAX
+
+    config ENV_GPIO_OUT_RANGE_MAX
+        int
+        default 33
+
+    config UART_BAUD_RATE
+        int "UART communication speed"
+        range 1200 115200
+        default 115200
+        help
+            UART communication speed for the data transfer.
+    
+    config UART_RXD_PIN
+        int "UART RXD pin number"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
+        default 5 if !IDF_TARGET_ESP32H4
+        default 15 if IDF_TARGET_ESP32H4
+        help
+            GPIO number for UART RX pin. See UART documentation for more information
+            about available pin numbers for UART.
+    
+    config UART_TXD_PIN
+        int "UART TXD pin number"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 4 if !IDF_TARGET_ESP32H4
+        default 16 if IDF_TARGET_ESP32H4
+        help
+            GPIO number for UART TX pin. See UART documentation for more information
+            about available pin numbers for UART.
+
+    config TASK_STACK_SIZE
+        int "Task Stack Size"
+        range 1024 16384
+        default 3072
+        help
+            Defines the task size for UART TX and RX tasks. Insufficient stack size can cause crash.
+endmenu
