@@ -8,7 +8,9 @@
 i2c_master_dev_handle_t mpu_i2c_handle;
 
 static bool initialized = false;
+static calibration_t cal;
 
+// initialization of the mpu9250 sensors
 esp_err_t mpu9250_init(void) {
     const char* mpu_init_tag = "mpu9250_init";
     esp_err_t status = ESP_OK;
@@ -110,7 +112,8 @@ esp_err_t mpu9250_init(void) {
     vTaskDelay(10 / portTICK_PERIOD_MS);
 
     // enable the magnetometer
-
+    
+    // print out the settings
     ESP_LOGI(mpu_init_tag, "MPU9250 Initialization Complete");
     free(write_buf);
     return status;
@@ -132,4 +135,53 @@ esp_err_t get_raw_gyro(uint8_t* gyro_buf) {
 esp_err_t get_raw_temp(uint8_t* temp_buf) {
     uint8_t write_buf = IMU_TEMP_OUT_H;
     return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, temp_buf, 2, -1);
+}
+
+// prints the configuration settings
+void print_settings() {
+    const char* func_tag = "mpu_print_settings";
+    uint8_t write_addr = IMU_SMPLRT_DIV;
+    uint8_t config[8];
+
+    esp_err_t status = i2c_master_transmit_receive(mpu_i2c_handle, &write_addr, 1, config, 8, -1);
+    if (status != ESP_OK) {
+        ESP_LOGE(func_tag, "Failed to read configuration registers.");
+        return;
+    }
+
+    // print config registers
+    ESP_LOGI(func_tag, "\n----- MPU 9250 -----\n");
+    ESP_LOGI(func_tag, "-- SMPLRT_DIV:          %d\n", config[0]);
+    ESP_LOGI(func_tag, "-- CONFIG:              %d\n", config[1]);
+    ESP_LOGI(func_tag, "-- GYRO_CONFIG:         %d\n", config[2]);
+    ESP_LOGI(func_tag, "-- ACCEL_CONFIG:        %d\n", ((uint16_t)(config[3] << 8) | (config[4])));
+    ESP_LOGI(func_tag, "-- LP_ACCEL_ODR:        %d\n", config[5]);
+    ESP_LOGI(func_tag, "-- WOM_THR:             %d\n", config[6]);
+    ESP_LOGI(func_tag, "-- FIFO_EN:             %d\n", config[7]);
+
+    // print calibration settings
+    ESP_LOGI(func_tag, "----- Calibration Values -----\n");
+    ESP_LOGI(func_tag, "-- Accel X Offset:      %0.3f \n", cal.a_offset.x);
+    ESP_LOGI(func_tag, "   (min) X Scale:       %0.3f \n", cal.a_scale_min.x);
+    ESP_LOGI(func_tag, "   (max) X Scale:       %0.3f \n", cal.a_scale_max.x);
+
+    ESP_LOGI(func_tag, "-- Accel Y Offset:      %0.3f \n", cal.a_offset.y);
+    ESP_LOGI(func_tag, "   (min) Y Scale:       %0.3f \n", cal.a_scale_min.y);
+    ESP_LOGI(func_tag, "   (max) Y Scale:       %0.3f \n", cal.a_scale_max.y);
+
+    ESP_LOGI(func_tag, "-- Accel Z Offset:      %0.3f \n", cal.a_offset.z);
+    ESP_LOGI(func_tag, "   (min) Z Scale:       %0.3f \n", cal.a_scale_min.z);
+    ESP_LOGI(func_tag, "   (max) Z Scale:       %0.3f \n", cal.a_scale_max.z);
+
+    ESP_LOGI(func_tag, "-- Accel X Offset:      %0.3f \n", cal.a_offset.x);
+    ESP_LOGI(func_tag, "   (min) X Scale:       %0.3f \n", cal.a_scale_min.x);
+    ESP_LOGI(func_tag, "   (max) X Scale:       %0.3f \n", cal.a_scale_max.x);
+
+    ESP_LOGI(func_tag, "-- Gyro X Offset:       %0.3f \n", cal.g_offset.x);
+    ESP_LOGI(func_tag, "-- Gyro Y Offset:       %0.3f \n", cal.g_offset.y);
+    ESP_LOGI(func_tag, "-- Gyro Y Offset:       %0.3f \n", cal.g_offset.z);
+
+    ESP_LOGI(func_tag, "-- Mag X Adjacent:      %0.3f \n", cal.mag_adj.x);
+    ESP_LOGI(func_tag, "-- Mag Y Adjacent:      %0.3f \n", cal.mag_adj.y);
+    ESP_LOGI(func_tag, "-- Mag Z Adjacent:      %0.3f \n", cal.mag_adj.z);
 }

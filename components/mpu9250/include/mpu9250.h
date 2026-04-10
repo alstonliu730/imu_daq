@@ -140,6 +140,8 @@ typedef struct {
 typedef struct {
     // accelerometer
     vector_t a_offset;
+    vector_t a_scale_min;
+    vector_t a_scale_max;
 
     // gyroscope
     vector_t g_offset;
@@ -244,4 +246,9 @@ esp_err_t set_fifo_mode(mpu_fifo_mode mode);
  */
 esp_err_t set_dlpf_cfg(uint8_t dlpf_cfg);
 
+/**
+ * @brief Prints the configuration settings
+ *
+ */
+void print_settings();
 #endif /* __MPU_9250_H__ */
