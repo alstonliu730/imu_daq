@@ -35,9 +35,11 @@ esp_err_t i2c_master_init(i2c_master_bus_handle_t* i2c_bus);
 /**
  * @brief Reads the register and changes certain bits of the value
  * 
- * Requests the data 
+ * Requests the data from the device and write specific bits of that value
+ *  
  * @param dev_handle    The device handler
  * @param reg_addr      The register address that it reads
+ * @param size          Size of the data read
  * @param start_bit     The starting bit
  * @param length        The number of bits that will be changed
  * @param value         Replacement bit value

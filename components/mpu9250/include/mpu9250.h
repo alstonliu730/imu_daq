@@ -248,7 +248,7 @@ esp_err_t set_dlpf_cfg(uint8_t dlpf_cfg);
 
 /**
  * @brief Prints the configuration settings
- *
  */
 void print_settings();
+
 #endif /* __MPU_9250_H__ */

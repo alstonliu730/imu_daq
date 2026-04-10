@@ -119,6 +119,12 @@ esp_err_t mpu9250_init(void) {
     return status;
 }
 
+// reads the raw frame output data
+esp_err_t get_raw_frame(uint8_t* frame_buf) {
+    uint8_t write_buf = IMU_ACCEL_XOUT_H;
+    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, frame_buf, 15, -1);
+}
+
 // gets the raw acceleration data
 esp_err_t get_raw_accel(uint8_t* accel_buf) {
     uint8_t write_buf = IMU_ACCEL_XOUT_H;
@@ -135,6 +141,22 @@ esp_err_t get_raw_gyro(uint8_t* gyro_buf) {
 esp_err_t get_raw_temp(uint8_t* temp_buf) {
     uint8_t write_buf = IMU_TEMP_OUT_H;
     return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, temp_buf, 2, -1);
+}
+
+// sets the sample rate divider value
+esp_err_t set_sample_rate_div(uint8_t div) {
+    uint8_t write_buf[2] = {IMU_SMPLRT_DIV, div};
+    return i2c_master_transmit(mpu_i2c_handle, write_buf, 2, -1);
+}
+
+// gets the sample rate divider value
+esp_err_t get_sample_rate_div(uint8_t* div) {
+    uint8_t write_buf = IMU_SMPLRT_DIV;
+    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, div, 1, -1);
+} 
+
+esp_err_t set_fifo_mode(mpu_fifo_mode mode) {
+    return i2c_write_bits(mpu_i2c_handle, IMU_CONFIG, 6, 1, mode);
 }
 
 // prints the configuration settings
@@ -185,3 +207,5 @@ void print_settings() {
     ESP_LOGI(func_tag, "-- Mag Y Adjacent:      %0.3f \n", cal.mag_adj.y);
     ESP_LOGI(func_tag, "-- Mag Z Adjacent:      %0.3f \n", cal.mag_adj.z);
 }
+
+
