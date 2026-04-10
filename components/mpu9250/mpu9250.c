@@ -5,6 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+// i2c handle for the mpu9250
 i2c_master_dev_handle_t mpu_i2c_handle;
 
 static bool initialized = false;
@@ -28,7 +29,7 @@ esp_err_t mpu9250_init(void) {
     if (i2c_master_probe(*bus_handle, MPU9250_DEV_ADDR, I2C_MASTER_TIMEOUT_MS))
     // Check if the mpu is already initialized
     if (initialized) {
-        ESP_LOGE(mpu_init_tag, "MPU9250 already initialized.");
+        ESP_LOGW(mpu_init_tag, "MPU9250 already initialized.");
         return ESP_ERR_INVALID_STATE;
     }
     
@@ -43,14 +44,14 @@ esp_err_t mpu9250_init(void) {
     status = i2c_master_bus_add_device(*bus_handle, &mpu_dev_config, &mpu_i2c_handle);
     if (status != ESP_OK)
     {
-        ESP_LOGE(mpu_init_tag, "Error adding MPU9250 to the i2c master bus.");
+        ESP_LOGW(mpu_init_tag, "Failed adding MPU9250 to the i2c master bus.");
         return status;
     }
 
     // Reset the device
     status = i2c_write_bits(mpu_i2c_handle, IMU_PWR_MGMT_1, IMU_PWR_H_RESET, 1, 1);
     if (status != ESP_OK) {
-        ESP_LOGE(mpu_init_tag, "Failed sending reset bit to power management");
+        ESP_LOGW(mpu_init_tag, "Failed sending reset bit to power management");
         free(write_buf);
         return status;
     }
@@ -59,7 +60,7 @@ esp_err_t mpu9250_init(void) {
     // set clock source
     status = i2c_write_bits(mpu_i2c_handle, IMU_PWR_MGMT_1, 0, 3, auto_select);
     if (status != ESP_OK) {
-        ESP_LOGE(mpu_init_tag, "Failed setting clock source bits in power management");
+        ESP_LOGW(mpu_init_tag, "Failed setting clock source bits in power management");
         free(write_buf);
         return status;
     }
@@ -69,7 +70,7 @@ esp_err_t mpu9250_init(void) {
     uint16_t config_value = 0x2;
     status = i2c_write_bits(mpu_i2c_handle, IMU_CONFIG, 0, 8, config_value);
     if (status != ESP_OK) {
-        ESP_LOGE(mpu_init_tag, "Failed setting the configuration register");
+        ESP_LOGW(mpu_init_tag, "Failed setting the configuration register");
         free(write_buf);
         return status;
     }
@@ -81,7 +82,7 @@ esp_err_t mpu9250_init(void) {
 
     status = i2c_master_transmit(mpu_i2c_handle, write_buf, 2, MPU9250_I2C_TIMEOUT);
     if (status != ESP_OK) {
-        ESP_LOGE(mpu_init_tag, "Failed to write to gyro configuration");
+        ESP_LOGW(mpu_init_tag, "Failed to write to gyro configuration");
         free(write_buf);
         return status;
     }
@@ -93,19 +94,17 @@ esp_err_t mpu9250_init(void) {
 
     status = i2c_master_transmit(mpu_i2c_handle, write_buf, 2, MPU9250_I2C_TIMEOUT);
     if (status != ESP_OK) {
-        ESP_LOGE(mpu_init_tag, "Failed to write to gyro configuration");
+        ESP_LOGW(mpu_init_tag, "Failed to write to gyro configuration");
         free(write_buf);
         return status;
     }
     vTaskDelay(10 / portTICK_PERIOD_MS);
 
     // set sample rate divider (SAMP_RATE = INTERNAL_SampRate / (1 + SMPLRT_DIV))
-    write_buf[0] = IMU_SMPLRT_DIV;
-    write_buf[1] = 3;
-
-    status = i2c_master_transmit(mpu_i2c_handle, write_buf, 2, MPU9250_I2C_TIMEOUT);
+    uint8_t divider_val = 3;
+    status = set_sample_rate_div(divider_val);
     if (status != ESP_OK) {
-        ESP_LOGE(mpu_init_tag, "Failed to set sampling rate divider");
+        ESP_LOGW(mpu_init_tag, "Failed to set sampling rate divider with value (%d)", divider_val);
         free(write_buf);
         return status;
     }
@@ -167,45 +166,45 @@ void print_settings() {
 
     esp_err_t status = i2c_master_transmit_receive(mpu_i2c_handle, &write_addr, 1, config, 8, -1);
     if (status != ESP_OK) {
-        ESP_LOGE(func_tag, "Failed to read configuration registers.");
+        ESP_LOGW(func_tag, "Failed to read configuration registers.");
         return;
     }
 
     // print config registers
-    ESP_LOGI(func_tag, "\n----- MPU 9250 -----\n");
-    ESP_LOGI(func_tag, "-- SMPLRT_DIV:          %d\n", config[0]);
-    ESP_LOGI(func_tag, "-- CONFIG:              %d\n", config[1]);
-    ESP_LOGI(func_tag, "-- GYRO_CONFIG:         %d\n", config[2]);
-    ESP_LOGI(func_tag, "-- ACCEL_CONFIG:        %d\n", ((uint16_t)(config[3] << 8) | (config[4])));
-    ESP_LOGI(func_tag, "-- LP_ACCEL_ODR:        %d\n", config[5]);
-    ESP_LOGI(func_tag, "-- WOM_THR:             %d\n", config[6]);
-    ESP_LOGI(func_tag, "-- FIFO_EN:             %d\n", config[7]);
+    ESP_LOGI(func_tag, "\n----- MPU 9250 -----");
+    ESP_LOGI(func_tag, "-- SMPLRT_DIV:          %d", config[0]);
+    ESP_LOGI(func_tag, "-- CONFIG:              %d", config[1]);
+    ESP_LOGI(func_tag, "-- GYRO_CONFIG:         %d", config[2]);
+    ESP_LOGI(func_tag, "-- ACCEL_CONFIG:        %d", ((uint16_t)(config[3] << 8) | (config[4])));
+    ESP_LOGI(func_tag, "-- LP_ACCEL_ODR:        %d", config[5]);
+    ESP_LOGI(func_tag, "-- WOM_THR:             %d", config[6]);
+    ESP_LOGI(func_tag, "-- FIFO_EN:             %d", config[7]);
 
     // print calibration settings
-    ESP_LOGI(func_tag, "----- Calibration Values -----\n");
-    ESP_LOGI(func_tag, "-- Accel X Offset:      %0.3f \n", cal.a_offset.x);
-    ESP_LOGI(func_tag, "   (min) X Scale:       %0.3f \n", cal.a_scale_min.x);
-    ESP_LOGI(func_tag, "   (max) X Scale:       %0.3f \n", cal.a_scale_max.x);
+    ESP_LOGI(func_tag, "\n----- Calibration Values -----");
+    ESP_LOGI(func_tag, "-- Accel X Offset:      %0.3f ", cal.a_offset.x);
+    ESP_LOGI(func_tag, "   (min) X Scale:       %0.3f ", cal.a_scale_min.x);
+    ESP_LOGI(func_tag, "   (max) X Scale:       %0.3f ", cal.a_scale_max.x);
 
-    ESP_LOGI(func_tag, "-- Accel Y Offset:      %0.3f \n", cal.a_offset.y);
-    ESP_LOGI(func_tag, "   (min) Y Scale:       %0.3f \n", cal.a_scale_min.y);
-    ESP_LOGI(func_tag, "   (max) Y Scale:       %0.3f \n", cal.a_scale_max.y);
+    ESP_LOGI(func_tag, "-- Accel Y Offset:      %0.3f ", cal.a_offset.y);
+    ESP_LOGI(func_tag, "   (min) Y Scale:       %0.3f ", cal.a_scale_min.y);
+    ESP_LOGI(func_tag, "   (max) Y Scale:       %0.3f ", cal.a_scale_max.y);
 
-    ESP_LOGI(func_tag, "-- Accel Z Offset:      %0.3f \n", cal.a_offset.z);
-    ESP_LOGI(func_tag, "   (min) Z Scale:       %0.3f \n", cal.a_scale_min.z);
-    ESP_LOGI(func_tag, "   (max) Z Scale:       %0.3f \n", cal.a_scale_max.z);
+    ESP_LOGI(func_tag, "-- Accel Z Offset:      %0.3f ", cal.a_offset.z);
+    ESP_LOGI(func_tag, "   (min) Z Scale:       %0.3f ", cal.a_scale_min.z);
+    ESP_LOGI(func_tag, "   (max) Z Scale:       %0.3f ", cal.a_scale_max.z);
 
-    ESP_LOGI(func_tag, "-- Accel X Offset:      %0.3f \n", cal.a_offset.x);
-    ESP_LOGI(func_tag, "   (min) X Scale:       %0.3f \n", cal.a_scale_min.x);
-    ESP_LOGI(func_tag, "   (max) X Scale:       %0.3f \n", cal.a_scale_max.x);
+    ESP_LOGI(func_tag, "-- Accel X Offset:      %0.3f ", cal.a_offset.x);
+    ESP_LOGI(func_tag, "   (min) X Scale:       %0.3f ", cal.a_scale_min.x);
+    ESP_LOGI(func_tag, "   (max) X Scale:       %0.3f ", cal.a_scale_max.x);
 
-    ESP_LOGI(func_tag, "-- Gyro X Offset:       %0.3f \n", cal.g_offset.x);
-    ESP_LOGI(func_tag, "-- Gyro Y Offset:       %0.3f \n", cal.g_offset.y);
-    ESP_LOGI(func_tag, "-- Gyro Y Offset:       %0.3f \n", cal.g_offset.z);
+    ESP_LOGI(func_tag, "-- Gyro X Offset:       %0.3f ", cal.g_offset.x);
+    ESP_LOGI(func_tag, "-- Gyro Y Offset:       %0.3f ", cal.g_offset.y);
+    ESP_LOGI(func_tag, "-- Gyro Y Offset:       %0.3f ", cal.g_offset.z);
 
-    ESP_LOGI(func_tag, "-- Mag X Adjacent:      %0.3f \n", cal.mag_adj.x);
-    ESP_LOGI(func_tag, "-- Mag Y Adjacent:      %0.3f \n", cal.mag_adj.y);
-    ESP_LOGI(func_tag, "-- Mag Z Adjacent:      %0.3f \n", cal.mag_adj.z);
+    ESP_LOGI(func_tag, "-- Mag X Adjacent:      %0.3f ", cal.mag_adj.x);
+    ESP_LOGI(func_tag, "-- Mag Y Adjacent:      %0.3f ", cal.mag_adj.y);
+    ESP_LOGI(func_tag, "-- Mag Z Adjacent:      %0.3f ", cal.mag_adj.z);
 }
 
 

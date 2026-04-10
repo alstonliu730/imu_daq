@@ -181,7 +181,7 @@ esp_err_t get_raw_frame(uint8_t* frame_buf);
 /**
  * @brief Get Raw Acceleration data from MPU9250
  * 
- * @param accel_buf [out] Acceleration buffer written to(16-bit)
+ * @param accel_buf [out] Acceleration buffer written to
  * 
  * @return An ESP error value
  */
@@ -190,7 +190,7 @@ esp_err_t get_raw_accel(uint8_t* accel_buf);
 /**
  * @brief Get Raw Gyroscope data from MPU9250
  * 
- * @param gyro_buf [out] Gyroscope data buffer written to (16-bit)
+ * @param gyro_buf [out] Gyroscope data buffer written to
  * 
  * @return An ESP error value
  */
@@ -199,11 +199,13 @@ esp_err_t get_raw_gyro(uint8_t* gyro_buf);
 /**
  * @brief Get Raw Temperature data from MPU9250
  * 
- * @param gyro_buf [out] Temperature data buffer written to (16-bit)
+ * @param temp_buf [out] Temperature data buffer written to 
  * 
  * @return An ESP error value
  */
 esp_err_t get_raw_temp(uint8_t* temp_buf);
+
+// Setting Functions
 
 /**
  * @brief Set the Sampling Rate Divider
