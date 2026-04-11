@@ -48,6 +48,18 @@ esp_err_t mpu9250_init(void) {
         return status;
     }
 
+    // check who am i register
+    bool isWhoAmI;
+    status = verifyWhoAmI(&isWhoAmI);
+    if (status != ESP_OK) {
+        ESP_LOGW(mpu_init_tag, "Failed reading the WHOAMI register.");
+        return status;
+    } else if (!isWhoAmI) {
+        ESP_LOGW(mpu_init_tag, "WHO_AM_I register isn't the same default value");
+        return status;
+    }
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
     // Reset the device
     status = i2c_write_bits(mpu_i2c_handle, IMU_PWR_MGMT_1, IMU_PWR_H_RESET, 1, 1);
     if (status != ESP_OK) {
@@ -142,6 +154,20 @@ esp_err_t get_raw_temp(uint8_t* temp_buf) {
     return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, temp_buf, 2, -1);
 }
 
+// verifies who am i register in device
+esp_err_t verifyWhoAmI(bool* whoami) {
+    // reads the who am i register
+    uint8_t whoami_val;
+    uint8_t write_buf = IMU_WHO_AM_I;
+    esp_err_t status = i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, &whoami_val, 1, -1);
+    
+    // store the boolean value at who am i
+    *whoami = (whoami_val == IMU_WHO_AM_I_VALUE);
+    
+    // return the status registers
+    return status;
+}
+
 // sets the sample rate divider value
 esp_err_t set_sample_rate_div(uint8_t div) {
     uint8_t write_buf[2] = {IMU_SMPLRT_DIV, div};
@@ -163,10 +189,18 @@ void print_settings() {
     const char* func_tag = "mpu_print_settings";
     uint8_t write_addr = IMU_SMPLRT_DIV;
     uint8_t config[8];
+    uint8_t whoami;
 
     esp_err_t status = i2c_master_transmit_receive(mpu_i2c_handle, &write_addr, 1, config, 8, -1);
     if (status != ESP_OK) {
         ESP_LOGW(func_tag, "Failed to read configuration registers.");
+        return;
+    }
+
+    write_addr = IMU_WHO_AM_I;
+    status = i2c_master_transmit_receive(mpu_i2c_handle, &write_addr, 1, &whoami, 1, -1);
+    if (status != ESP_OK) {
+        ESP_LOGW(func_tag, "Failed to read WHO AM I register.");
         return;
     }
 
@@ -179,6 +213,7 @@ void print_settings() {
     ESP_LOGI(func_tag, "-- LP_ACCEL_ODR:        %d", config[5]);
     ESP_LOGI(func_tag, "-- WOM_THR:             %d", config[6]);
     ESP_LOGI(func_tag, "-- FIFO_EN:             %d", config[7]);
+    ESP_LOGI(func_tag, "-- WHO_AM_I:            %d", whoami);
 
     // print calibration settings
     ESP_LOGI(func_tag, "\n----- Calibration Values -----");
@@ -206,5 +241,3 @@ void print_settings() {
     ESP_LOGI(func_tag, "-- Mag Y Adjacent:      %0.3f ", cal.mag_adj.y);
     ESP_LOGI(func_tag, "-- Mag Z Adjacent:      %0.3f ", cal.mag_adj.z);
 }
-
-

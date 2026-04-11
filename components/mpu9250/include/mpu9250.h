@@ -152,6 +152,7 @@ typedef struct {
 
 // WHO AM I register
 #define IMU_WHO_AM_I                0x75
+#define IMU_WHO_AM_I_VALUE          0x68
 
 // MPU9250 Configuration Values
 #define MPU9250_DEV_ADDR            0x68
@@ -205,7 +206,14 @@ esp_err_t get_raw_gyro(uint8_t* gyro_buf);
  */
 esp_err_t get_raw_temp(uint8_t* temp_buf);
 
-// Setting Functions
+/**
+ * @brief Checks if the WHO AM I register is correct
+ * 
+ * @param whoami [out] `True` if the WHO AM I register is the default value
+ * 
+ * @return An ESP error value 
+ */
+esp_err_t verifyWhoAmI(bool* whoami);
 
 /**
  * @brief Set the Sampling Rate Divider
