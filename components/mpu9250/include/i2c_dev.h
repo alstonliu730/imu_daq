@@ -4,6 +4,7 @@
 #include "driver/i2c_types.h"
 #include "esp_err.h"
 #include "esp_types.h"
+#include "sdkconfig.h"
 
 #define I2C_MASTER_NUM          I2C_NUM_0
 #define I2C_MASTER_SCL_NUM      CONFIG_I2C_MASTER_SCL
@@ -12,7 +13,7 @@
 #define I2C_MASTER_FREQ_HZ      CONFIG_I2C_MASTER_FREQ
 #define I2C_MASTER_TIMEOUT_MS   1000
 
-extern i2c_master_bus_handle_t* bus_handle;
+extern i2c_master_bus_handle_t bus_handle;
 
 /**
  * @brief I2C Master Initialization

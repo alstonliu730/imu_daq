@@ -6,8 +6,9 @@
 #include "esp_err.h"
 
 static const char* TAG = "i2c_dev";
-i2c_master_bus_handle_t* bus_handle = NULL;
+i2c_master_bus_handle_t bus_handle = NULL;
 
+// initialize the bus and return the bus handler
 esp_err_t i2c_master_init(i2c_master_bus_handle_t* i2c_bus) {
     i2c_master_bus_config_t i2c_master_config = {
         .i2c_port = I2C_MASTER_NUM,
@@ -21,6 +22,7 @@ esp_err_t i2c_master_init(i2c_master_bus_handle_t* i2c_bus) {
     return i2c_new_master_bus(&i2c_master_config, i2c_bus);
 }
 
+// reads a register and modifies specific bits, then writes back into register
 esp_err_t i2c_write_bits(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, uint8_t start_bit, size_t length, uint16_t value) {
     // get the value from the register
     esp_err_t status = ESP_OK;
@@ -36,7 +38,7 @@ esp_err_t i2c_write_bits(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, u
     if (start_bit + length >= 8) { 
         data &= ~(BIT_MASK(7, start_bit));
     } else {
-        data &= ~(BIT_MASK(start_bit + length, start_bit));
+        data &= ~(BIT_MASK(start_bit + length - 1, start_bit));
     }
 
     // set the value to the intended part of data

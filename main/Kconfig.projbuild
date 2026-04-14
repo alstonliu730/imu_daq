@@ -86,4 +86,4 @@ if SCAN_PROJECT
             help
                 I2C Master Frequency for Devices
     endif # MY_I2C_CONFIG
-endif # SCAN PROJECT
+endif # SCAN_PROJECT

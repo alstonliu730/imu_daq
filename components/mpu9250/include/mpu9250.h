@@ -152,11 +152,16 @@ typedef struct {
 
 // WHO AM I register
 #define IMU_WHO_AM_I                0x75
-#define IMU_WHO_AM_I_VALUE          0x68
+#define IMU_WHO_AM_I_VALUE          0x71
 
 // MPU9250 Configuration Values
 #define MPU9250_DEV_ADDR            0x68
 #define MPU9250_I2C_TIMEOUT         100
+
+#define MPU9250_ACCEL_LEN           6
+#define MPU9250_GYRO_LEN            6
+#define MPU9250_TEMP_LEN            2
+#define MPU9250_FRAME_LEN           (MPU9250_ACCEL_LEN + MPU9250_GYRO_LEN + MPU9250_TEMP_LEN)
 
 // Function Declarations
 /**

@@ -4,6 +4,8 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include <stdlib.h>
+#include <stdarg.h>
 
 // i2c handle for the mpu9250
 i2c_master_dev_handle_t mpu_i2c_handle;
@@ -15,18 +17,22 @@ static calibration_t cal;
 esp_err_t mpu9250_init(void) {
     const char* mpu_init_tag = "mpu9250_init";
     esp_err_t status = ESP_OK;
-    uint8_t* write_buf = malloc(sizeof(uint8_t) * 4); 
 
     ESP_LOGI(mpu_init_tag, "Initializing MPU9250");
 
     // Check if the i2c master bus is initialized
     if (bus_handle == NULL) {
         // initialize the i2c master bus
-        i2c_master_init(bus_handle);
+        i2c_master_init(&bus_handle);
     }
 
     // Check if the MPU is connected
-    if (i2c_master_probe(*bus_handle, MPU9250_DEV_ADDR, I2C_MASTER_TIMEOUT_MS))
+    status = i2c_master_probe(bus_handle, MPU9250_DEV_ADDR, MPU9250_I2C_TIMEOUT);
+    if (status != ESP_OK) {
+        ESP_LOGW(mpu_init_tag, "I2C not able to find MPU9250 device address (0x%x): %s", MPU9250_DEV_ADDR, esp_err_to_name(status));
+        return status;
+    }
+    
     // Check if the mpu is already initialized
     if (initialized) {
         ESP_LOGW(mpu_init_tag, "MPU9250 already initialized.");
@@ -41,12 +47,15 @@ esp_err_t mpu9250_init(void) {
     };
 
     // add this sensor as a device
-    status = i2c_master_bus_add_device(*bus_handle, &mpu_dev_config, &mpu_i2c_handle);
+    status = i2c_master_bus_add_device(bus_handle, &mpu_dev_config, &mpu_i2c_handle);
     if (status != ESP_OK)
     {
         ESP_LOGW(mpu_init_tag, "Failed adding MPU9250 to the i2c master bus.");
         return status;
     }
+
+    // Create a write buffer to add register address
+    uint8_t write_buf[4];
 
     // check who am i register
     bool isWhoAmI;
@@ -61,10 +70,9 @@ esp_err_t mpu9250_init(void) {
     vTaskDelay(100 / portTICK_PERIOD_MS);
 
     // Reset the device
-    status = i2c_write_bits(mpu_i2c_handle, IMU_PWR_MGMT_1, IMU_PWR_H_RESET, 1, 1);
+    status = i2c_write_bits(mpu_i2c_handle, IMU_PWR_MGMT_1, 7, 1, 1);
     if (status != ESP_OK) {
         ESP_LOGW(mpu_init_tag, "Failed sending reset bit to power management");
-        free(write_buf);
         return status;
     }
     vTaskDelay(100 / portTICK_PERIOD_MS); // wait for data to be available in the sensor
@@ -73,7 +81,6 @@ esp_err_t mpu9250_init(void) {
     status = i2c_write_bits(mpu_i2c_handle, IMU_PWR_MGMT_1, 0, 3, auto_select);
     if (status != ESP_OK) {
         ESP_LOGW(mpu_init_tag, "Failed setting clock source bits in power management");
-        free(write_buf);
         return status;
     }
     vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -83,7 +90,6 @@ esp_err_t mpu9250_init(void) {
     status = i2c_write_bits(mpu_i2c_handle, IMU_CONFIG, 0, 8, config_value);
     if (status != ESP_OK) {
         ESP_LOGW(mpu_init_tag, "Failed setting the configuration register");
-        free(write_buf);
         return status;
     }
     vTaskDelay(10/ portTICK_PERIOD_MS);
@@ -95,7 +101,6 @@ esp_err_t mpu9250_init(void) {
     status = i2c_master_transmit(mpu_i2c_handle, write_buf, 2, MPU9250_I2C_TIMEOUT);
     if (status != ESP_OK) {
         ESP_LOGW(mpu_init_tag, "Failed to write to gyro configuration");
-        free(write_buf);
         return status;
     }
 
@@ -104,10 +109,9 @@ esp_err_t mpu9250_init(void) {
     write_buf[1] = 0x08;
     write_buf[2] = 0x02;
 
-    status = i2c_master_transmit(mpu_i2c_handle, write_buf, 2, MPU9250_I2C_TIMEOUT);
+    status = i2c_master_transmit(mpu_i2c_handle, write_buf, 3, MPU9250_I2C_TIMEOUT);
     if (status != ESP_OK) {
-        ESP_LOGW(mpu_init_tag, "Failed to write to gyro configuration");
-        free(write_buf);
+        ESP_LOGW(mpu_init_tag, "Failed to write to accel configuration");
         return status;
     }
     vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -117,41 +121,44 @@ esp_err_t mpu9250_init(void) {
     status = set_sample_rate_div(divider_val);
     if (status != ESP_OK) {
         ESP_LOGW(mpu_init_tag, "Failed to set sampling rate divider with value (%d)", divider_val);
-        free(write_buf);
         return status;
     }
     vTaskDelay(10 / portTICK_PERIOD_MS);
 
-    // enable the magnetometer
-    
+    // enable the magnetometer (NOT YET IMPLEMENTED)
+
     // print out the settings
+    print_settings();
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+
+    // Notify User that initialization is done
     ESP_LOGI(mpu_init_tag, "MPU9250 Initialization Complete");
-    free(write_buf);
+    initialized = true;
     return status;
 }
 
 // reads the raw frame output data
 esp_err_t get_raw_frame(uint8_t* frame_buf) {
     uint8_t write_buf = IMU_ACCEL_XOUT_H;
-    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, frame_buf, 15, -1);
+    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, frame_buf, MPU9250_FRAME_LEN, -1);
 }
 
 // gets the raw acceleration data
 esp_err_t get_raw_accel(uint8_t* accel_buf) {
     uint8_t write_buf = IMU_ACCEL_XOUT_H;
-    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, accel_buf, 6, -1); 
+    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, accel_buf, MPU9250_ACCEL_LEN, -1); 
 }
 
 // gets the raw gyroscopic data
 esp_err_t get_raw_gyro(uint8_t* gyro_buf) {
     uint8_t write_buf = IMU_GYRO_XOUT_H;
-    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, gyro_buf, 6, -1);
+    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, gyro_buf, MPU9250_GYRO_LEN, -1);
 }
 
 // gets the raw temperature data
 esp_err_t get_raw_temp(uint8_t* temp_buf) {
     uint8_t write_buf = IMU_TEMP_OUT_H;
-    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, temp_buf, 2, -1);
+    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, temp_buf, MPU9250_TEMP_LEN, -1);
 }
 
 // verifies who am i register in device
@@ -161,6 +168,8 @@ esp_err_t verifyWhoAmI(bool* whoami) {
     uint8_t write_buf = IMU_WHO_AM_I;
     esp_err_t status = i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, &whoami_val, 1, -1);
     
+    ESP_LOGI("whoami", "0x%x", whoami_val);
+
     // store the boolean value at who am i
     *whoami = (whoami_val == IMU_WHO_AM_I_VALUE);
     
@@ -180,8 +189,14 @@ esp_err_t get_sample_rate_div(uint8_t* div) {
     return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, div, 1, -1);
 } 
 
+// set the fifo mode in the configuration register
 esp_err_t set_fifo_mode(mpu_fifo_mode mode) {
     return i2c_write_bits(mpu_i2c_handle, IMU_CONFIG, 6, 1, mode);
+}
+
+// sets the digital low-pass filter configuration register
+esp_err_t set_dlpf_cfg(uint8_t dlpf_cfg) {
+    return i2c_write_bits(mpu_i2c_handle, IMU_CONFIG, 0, 3, dlpf_cfg);
 }
 
 // prints the configuration settings
@@ -229,13 +244,9 @@ void print_settings() {
     ESP_LOGI(func_tag, "   (min) Z Scale:       %0.3f ", cal.a_scale_min.z);
     ESP_LOGI(func_tag, "   (max) Z Scale:       %0.3f ", cal.a_scale_max.z);
 
-    ESP_LOGI(func_tag, "-- Accel X Offset:      %0.3f ", cal.a_offset.x);
-    ESP_LOGI(func_tag, "   (min) X Scale:       %0.3f ", cal.a_scale_min.x);
-    ESP_LOGI(func_tag, "   (max) X Scale:       %0.3f ", cal.a_scale_max.x);
-
     ESP_LOGI(func_tag, "-- Gyro X Offset:       %0.3f ", cal.g_offset.x);
     ESP_LOGI(func_tag, "-- Gyro Y Offset:       %0.3f ", cal.g_offset.y);
-    ESP_LOGI(func_tag, "-- Gyro Y Offset:       %0.3f ", cal.g_offset.z);
+    ESP_LOGI(func_tag, "-- Gyro Z Offset:       %0.3f ", cal.g_offset.z);
 
     ESP_LOGI(func_tag, "-- Mag X Adjacent:      %0.3f ", cal.mag_adj.x);
     ESP_LOGI(func_tag, "-- Mag Y Adjacent:      %0.3f ", cal.mag_adj.y);

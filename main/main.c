@@ -1,13 +1,25 @@
-/**
- * 
- */
-
 #include <stdio.h>
+#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "uart_comm.h"
+#include "mpu9250.h"
+#include "esp_err.h"
+#include "i2c_dev.h"
+
+static const char* TAG = "main";
 
 void app_main(void)
 {   
-    init_uart_poll();
+    esp_err_t status;
+
+    status = i2c_master_init(&bus_handle);
+    if (status != ESP_OK) {
+        ESP_LOGE(TAG, "I2C Master Init Function Returned: %s", esp_err_to_name(status));
+    }
+    
+    status = mpu9250_init();
+    if (status != ESP_OK) {
+        ESP_LOGE(TAG, "MPU9250 Init Function Returned: %s", esp_err_to_name(status));
+    }
 }
