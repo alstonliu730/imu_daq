@@ -55,3 +55,26 @@ esp_err_t i2c_write_bits(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, u
     return status;
 }
 
+// prints a formatted list of every device on the i2c bus
+esp_err_t i2c_detect() {
+    uint8_t address;
+    printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\r\n");
+    for(int i = 0; i < 128; i += 16) {
+        printf("%02x: ", i);
+        for(int j = 0; j < 16; j++) {
+            address = (i + j);
+            esp_err_t status = i2c_master_probe(bus_handle, address, I2C_MASTER_TIMEOUT_MS);
+            if (status == ESP_OK) {
+                printf("%02x ", address);
+            } else if (status == ESP_ERR_TIMEOUT) {
+                printf("UU ");
+            } else {
+                printf("-- ");
+            }
+        }
+        printf("\r\n");
+    }
+    
+    return ESP_OK;
+}
+

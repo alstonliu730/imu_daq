@@ -11,7 +11,7 @@
 #define I2C_MASTER_SDA_NUM      CONFIG_I2C_MASTER_SDA
 #define I2C_GLITCH_CNT          7
 #define I2C_MASTER_FREQ_HZ      CONFIG_I2C_MASTER_FREQ
-#define I2C_MASTER_TIMEOUT_MS   1000
+#define I2C_MASTER_TIMEOUT_MS   100
 
 extern i2c_master_bus_handle_t bus_handle;
 
@@ -49,4 +49,17 @@ esp_err_t i2c_master_init(i2c_master_bus_handle_t* i2c_bus);
  */
 esp_err_t i2c_write_bits(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, uint8_t start_bit, size_t length, uint16_t value);
 
+/**
+ * @brief Probes each device address in the i2c bus to find devices
+ * 
+ * Logs the device list with corresponding device address with each status:
+ * - "--" - No Device Found
+ * - "UU" - Device Timeout
+ * - "XX" - Device Found 
+ * 
+ * @note If the device is found, the address is written out as an 8-bit Hexadecimal Number.
+ * 
+ * @return An ESP error value
+ */
+esp_err_t i2c_detect();
 #endif /* __I2C_DEV_H__*/
