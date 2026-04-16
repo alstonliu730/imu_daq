@@ -57,6 +57,11 @@ esp_err_t i2c_write_bits(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, u
 
 // prints a formatted list of every device on the i2c bus
 esp_err_t i2c_detect() {
+    if (bus_handle == NULL) {
+        ESP_LOGE("i2cdetect", "I2C Bus has not been initialized.");
+        return ESP_ERR_INVALID_STATE;
+    }
+
     uint8_t address;
     printf("     0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f\r\n");
     for(int i = 0; i < 128; i += 16) {
