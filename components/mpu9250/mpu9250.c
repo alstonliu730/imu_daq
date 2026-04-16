@@ -23,7 +23,7 @@ esp_err_t mpu9250_init(void) {
     // Check if the i2c master bus is initialized
     if (bus_handle == NULL) {
         // initialize the i2c master bus
-        i2c_master_init(&bus_handle);
+        ESP_ERROR_CHECK(i2c_master_init(&bus_handle));
     }
 
     // Check if the MPU is connected
