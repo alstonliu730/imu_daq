@@ -40,14 +40,13 @@ esp_err_t i2c_master_init(i2c_master_bus_handle_t* i2c_bus);
  *  
  * @param dev_handle    The device handler
  * @param reg_addr      The register address that it reads
- * @param size          Size of the data read
  * @param start_bit     The starting bit
  * @param length        The number of bits that will be changed
  * @param value         Replacement bit value
  * 
  * @return An ESP error value
  */
-esp_err_t i2c_write_bits(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, uint8_t start_bit, size_t length, uint16_t value);
+esp_err_t i2c_write_bits(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, uint8_t lsb, size_t length, uint16_t value);
 
 /**
  * @brief Probes each device address in the i2c bus to find devices

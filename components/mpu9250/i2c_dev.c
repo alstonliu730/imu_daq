@@ -1,8 +1,8 @@
 #include "i2c_dev.h"
 #include "esp_log.h"
 #include "driver/i2c_master.h"
-#include "mpu9250.h"
-#include "sdkconfig.h"
+
+#include "common.h"
 #include "esp_err.h"
 
 static const char* TAG = "i2c_dev";
@@ -28,7 +28,7 @@ esp_err_t i2c_write_bits(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, u
     esp_err_t status = ESP_OK;
 
     uint8_t data;
-    status = i2c_master_transmit_receive(dev_handle, &reg_addr, 1, &data, 1, -1);
+    status = i2c_master_transmit_receive(dev_handle, &reg_addr, 1, &data, 1, I2C_MASTER_TIMEOUT_MS);
     if (status != ESP_OK) {
         ESP_LOGE(TAG, "Failed to retreive register value in i2c_write_bits");
         return status;
@@ -40,13 +40,14 @@ esp_err_t i2c_write_bits(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, u
     } else {
         data &= ~(BIT_MASK(start_bit + length - 1, start_bit));
     }
-
+    
     // set the value to the intended part of data
-    data |= (value << start_bit);
+    uint16_t value_mask = (length == 8) ? 0xFFU : (uint16_t)((1U << length) - 1U);
+    data |= (uint8_t)((value & value_mask) << start_bit);
 
     // write back to memory
     uint8_t write_buf[2] = {reg_addr, data};
-    status = i2c_master_transmit(dev_handle, write_buf, 2, -1);
+    status = i2c_master_transmit(dev_handle, write_buf, 2, I2C_MASTER_TIMEOUT_MS);
     if (status != ESP_OK) {
         ESP_LOGE(TAG, "Failed to write back to register in i2c_write_bits");
         return status;

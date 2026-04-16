@@ -140,25 +140,29 @@ esp_err_t mpu9250_init(void) {
 // reads the raw frame output data
 esp_err_t get_raw_frame(uint8_t* frame_buf) {
     uint8_t write_buf = IMU_ACCEL_XOUT_H;
-    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, frame_buf, MPU9250_FRAME_LEN, -1);
+    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, 
+                frame_buf, MPU9250_FRAME_LEN, MPU9250_I2C_TIMEOUT);
 }
 
 // gets the raw acceleration data
 esp_err_t get_raw_accel(uint8_t* accel_buf) {
     uint8_t write_buf = IMU_ACCEL_XOUT_H;
-    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, accel_buf, MPU9250_ACCEL_LEN, -1); 
+    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, 
+                accel_buf, MPU9250_ACCEL_LEN, MPU9250_I2C_TIMEOUT); 
 }
 
 // gets the raw gyroscopic data
 esp_err_t get_raw_gyro(uint8_t* gyro_buf) {
     uint8_t write_buf = IMU_GYRO_XOUT_H;
-    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, gyro_buf, MPU9250_GYRO_LEN, -1);
+    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, 
+                gyro_buf, MPU9250_GYRO_LEN, MPU9250_I2C_TIMEOUT);
 }
 
 // gets the raw temperature data
 esp_err_t get_raw_temp(uint8_t* temp_buf) {
     uint8_t write_buf = IMU_TEMP_OUT_H;
-    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, temp_buf, MPU9250_TEMP_LEN, -1);
+    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, 
+                temp_buf, MPU9250_TEMP_LEN, MPU9250_I2C_TIMEOUT);
 }
 
 // verifies who am i register in device
@@ -166,7 +170,7 @@ esp_err_t verifyWhoAmI(bool* whoami) {
     // reads the who am i register
     uint8_t whoami_val;
     uint8_t write_buf = IMU_WHO_AM_I;
-    esp_err_t status = i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, &whoami_val, 1, -1);
+    esp_err_t status = i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, &whoami_val, 1, MPU9250_I2C_TIMEOUT);
     
     ESP_LOGI("whoami", "0x%x", whoami_val);
 
@@ -180,13 +184,14 @@ esp_err_t verifyWhoAmI(bool* whoami) {
 // sets the sample rate divider value
 esp_err_t set_sample_rate_div(uint8_t div) {
     uint8_t write_buf[2] = {IMU_SMPLRT_DIV, div};
-    return i2c_master_transmit(mpu_i2c_handle, write_buf, 2, -1);
+    return i2c_master_transmit(mpu_i2c_handle, write_buf, 2, MPU9250_I2C_TIMEOUT);
 }
 
 // gets the sample rate divider value
 esp_err_t get_sample_rate_div(uint8_t* div) {
     uint8_t write_buf = IMU_SMPLRT_DIV;
-    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1, div, 1, -1);
+    return i2c_master_transmit_receive(mpu_i2c_handle, &write_buf, 1,
+                                     div, 1, MPU9250_I2C_TIMEOUT);
 } 
 
 // set the fifo mode in the configuration register
@@ -206,14 +211,15 @@ void print_settings() {
     uint8_t config[8];
     uint8_t whoami;
 
-    esp_err_t status = i2c_master_transmit_receive(mpu_i2c_handle, &write_addr, 1, config, 8, -1);
+    esp_err_t status = i2c_master_transmit_receive(mpu_i2c_handle, &write_addr, 1, 
+                                    config, 8, MPU9250_I2C_TIMEOUT);
     if (status != ESP_OK) {
         ESP_LOGW(func_tag, "Failed to read configuration registers.");
         return;
     }
 
     write_addr = IMU_WHO_AM_I;
-    status = i2c_master_transmit_receive(mpu_i2c_handle, &write_addr, 1, &whoami, 1, -1);
+    status = i2c_master_transmit_receive(mpu_i2c_handle, &write_addr, 1, &whoami, 1, MPU9250_I2C_TIMEOUT);
     if (status != ESP_OK) {
         ESP_LOGW(func_tag, "Failed to read WHO AM I register.");
         return;
